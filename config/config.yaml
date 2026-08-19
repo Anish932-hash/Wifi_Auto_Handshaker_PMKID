@@ -1,0 +1,83 @@
+# ============================================================================
+# Wifi Auto Handshaker PMKID — configuration
+#
+# This tool is for AUTHORIZED WiFi security auditing ONLY. Capturing handshakes
+# and PMKIDs, and performing deauthentication, without the network owner's
+# permission is illegal in most jurisdictions. You are solely responsible for
+# lawful use.
+#
+# The tool performs CAPTURE ONLY. It never hashes or cracks passwords.
+# ============================================================================
+
+general:
+  interface: null            # wireless interface; null = auto-detect
+  require_root: true         # refuse to run capture without root
+  consent_required: true     # interactive authorization gate on first run
+  output_root: null          # null = ./data
+  log_level: "INFO"
+
+adapter:
+  auto_monitor: true         # auto-enable monitor mode
+  reset_on_exit: true        # restore managed mode on shutdown
+  check_injection: true      # run aireplay-ng --test before capturing
+  channel_hop: false
+
+scan:
+  dwell: 12                  # seconds to listen on each channel
+  bands: ["2.4GHz", "5GHz"]  # 6GHz optional if hardware supports it
+  min_signal: -90            # ignore APs weaker than this (dBm)
+
+capture:
+  format: "pcapng"           # pcapng (hcxdumptool) or pcap
+  max_duration: 300          # max seconds capturing a single target
+  write_interval: 2
+  wpa_only: true             # skip WEP / open networks
+  # hcxdumptool attack modes for the main handshake capture:
+  # 1=PMKID (clientless), 2=EAPOL passive, 3=EAPOL deauth
+  hcxdumptool_attack: ["1", "2"]
+
+verify:
+  require_full_handshake: true   # strict: M1+M2+M3+M4 must all be present
+  require_mic: true              # MIC must be present on M2/M3
+  require_nonce: true            # ANonce + SNonce must be present
+  min_packets: 4
+  tools: ["tshark", "aircrack-ng", "hcxpcapngtool"]
+  delete_on_fail: true           # anything that is NOT a 4-way HS is deleted
+  quarantine_before_delete: true
+
+deauth:
+  enabled: true
+  max_bursts: 8
+  burst_size: 15
+  cooldown: 4
+  reason_codes: [1, 4, 7]        # 1 unspec, 4 disassoc, 7 class3-from-nonassoc
+  tools: ["aireplay-ng", "mdk4", "bettercap"]
+
+pmkid:
+  enabled: true
+  hcxdumptool_filter: ["1"]      # 1=PMKID attack, 2=passive, 3=clientless deauth
+  convert_to_22000: true
+
+learning:
+  enabled: true
+  exploration: 0.25
+  decay: 0.95
+  min_observations: 2
+
+nim:
+  enabled: false                 # NVIDIA NIM is OPTIONAL; tool is fully independent
+  api_key: null                  # prefer NIM_API_KEY environment variable
+  base_url: "https://integrate.api.nvidia.com/v1"
+  model: null
+  max_suggestions: 8
+  timeout: 20
+
+targets:
+  bssid: []                      # explicit BSSIDs to target (empty = auto-prioritize)
+  essid: []
+  channel: []
+  max_targets: 0                 # 0 = unlimited
+  exclude: []                    # never touch these BSSIDs
+
+tools:
+  overrides: {}                  # e.g. {"mdk4": "/usr/bin/mdk4"}
